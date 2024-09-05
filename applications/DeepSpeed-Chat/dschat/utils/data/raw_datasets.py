@@ -18,7 +18,7 @@ class PromptRawDataset(object):
         self.local_rank = local_rank
         if os.path.exists(dataset_name):
             self.raw_datasets = load_from_disk(dataset_name)
-        elif not dataset_name == 'local/jsonfile':
+        elif not dataset_name == 'local/text2sql':
             self.raw_datasets = load_dataset(dataset_name)
 
     def get_train_data(self):
@@ -45,6 +45,66 @@ class PromptRawDataset(object):
 
     def get_prompt_and_rejected(self, sample):
         return
+
+
+# Chinese dataset
+class LocalText2SqlDataset(PromptRawDataset):
+
+    def __init__(self, output_path, seed, local_rank, dataset_name):
+        super().__init__(output_path, seed, local_rank, dataset_name)
+        self.dataset_name = "local/text2sql"
+        self.dataset_name_clean = "text2sql"
+
+        self.raw_datasets = load_dataset('json', data_files='data/train_data.json', split='train')
+
+    def get_train_data(self):
+        from .data_utils import get_raw_dataset_split_index
+        dataset = self.raw_datasets
+        index = get_raw_dataset_split_index(self.local_rank, self.output_path,
+                                            self.dataset_name_clean,
+                                            self.seed, "train_eval", "9,1", 0,
+                                            len(dataset))
+        dataset = Subset(dataset, index)
+        return dataset
+
+    def get_eval_data(self):
+        from .data_utils import get_raw_dataset_split_index
+        dataset = self.raw_datasets
+        index = get_raw_dataset_split_index(self.local_rank, self.output_path,
+                                            self.dataset_name_clean,
+                                            self.seed, "train_eval", "9,1", 1,
+                                            len(dataset))
+        dataset = Subset(dataset, index)
+        return dataset
+
+    def get_prompt(self, sample):
+        if sample['prompt'] is not None:
+            return sample['prompt']
+        return None
+
+    def get_chosen(self, sample):
+        if sample['answer'] is not None:
+            return sample['answer']
+        return None
+
+    def get_rejected(self, sample):
+        print(
+            f"Warning: dataset {self.dataset_name} does not include rejected response."
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        if sample['prompt'] is not None and sample['answer'] is not None:
+            return sample['prompt'] + sample['answer']
+        return None
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f"Warning: dataset {self.dataset_name} does not include rejected response."
+        )
+        return None
+
+
 
 
 # English dataset
